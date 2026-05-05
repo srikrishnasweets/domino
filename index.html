@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domino</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #2e75f1;
+            --primary-hover: #0864b9;
+            --surface: rgba(255, 255, 255, 0.95);
+            --background: #f0f9ff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+            --radius: 12px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Navbar */
+        .navbar {
+            width: 100%;
+            background: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .nav-controls label {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .date-picker {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            color: var(--text-main);
+            outline: none;
+        }
+        
+        .date-picker:focus {
+            border-color: var(--primary);
+        }
+
+        /* Main Container */
+        .container {
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        .inventory-card {
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        /* Table View */
+        .inventory-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .refresh-btn {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 650px;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .inventory-table-row:hover {
+            background-color: #f8fafc;
+            cursor: pointer;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .item-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        /* Floating Action Button (FAB) */
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, background-color 0.2s;
+            z-index: 100;
+        }
+
+        .fab:hover {
+            transform: scale(1.05);
+            background-color: var(--primary-hover);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 700px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            padding: 2rem;
+            animation: slideUp 0.3s ease;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .close-modal:hover {
+            color: var(--text-main);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form Styling inside Modal */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        input, select {
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: #fff;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+
+        /* File Upload */
+        .file-upload-wrapper {
+            position: relative;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #f8fafc;
+        }
+
+        .file-upload-wrapper:hover {
+            border-color: var(--primary);
+            background: #f0f9ff;
+        }
+
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .preview-container {
+            margin-top: 1rem;
+            display: none;
+            justify-content: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+        }
+
+        button.submit-btn {
+            grid-column: 1 / -1;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.85rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button.submit-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        button.submit-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .loader {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        .spinner-dark {
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .status-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #f87171;
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .navbar {
+                padding: 1rem;
+            }
+            .navbar h1 {
+                font-size: 1.25rem;
+            }
+            .nav-controls label {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        <h1>Domino</h1>
+        <div class="nav-controls">
+            <label for="filterDate">Records For:</label>
+            <input type="date" id="filterDate" class="date-picker">
+        </div>
+    </div>
+
+    <!-- Main Container (Table View) -->
+    <div class="container">
+        <div class="inventory-card">
+            <div class="inventory-controls">
+                <h2 id="viewTitle" style="color: var(--text-main); font-size: 1.25rem;">Records</h2>
+                <button class="refresh-btn" onclick="fetchInventory()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Refresh
+                </button>
+            </div>
+            
+            <div id="inventoryContainer">
+                <div class="empty-state" id="loadingState">
+                    <div class="spinner-dark"></div>
+                    <p>Loading inventory data...</p>
+                </div>
+                
+                <div class="table-responsive" id="tableContainer" style="display: none;">
+                    <table id="inventoryTable">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Product Details</th>
+                                <th>Category / Code</th>
+                                <th>Stock & Price</th>
+                                <th>Dates & Batch</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryBody">
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="empty-state" id="noDataState" style="display: none;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #cbd5e1; margin-bottom: 10px;">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    <p>No inventory records found for this date.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="openModal()">+</button>
+
+    <!-- Modal Form -->
+    <div class="modal" id="entryModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal()">×</button>
+            <div class="modal-header">
+                <h2>Add New Entry</h2>
+            </div>
+            
+            <form id="inventoryForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <input type="text" id="category" name="category" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="code">Item Code</label>
+                        <input type="text" id="code" name="code" required list="codeList">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="product">Product Name</label>
+                        <input type="text" id="product" name="product" required list="productList">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="variant">Variant</label>
+                        <input type="text" id="variant" name="variant">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="price">Price</label>
+                        <input type="number" id="price" name="price" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="quantity">Quantity</label>
+                        <input type="number" id="quantity" name="quantity" min="0" required>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="batch">Batch Number</label>
+                        <input type="text" id="batch" name="batch">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mfd">Manufacturing Date (MFD)</label>
+                        <input type="date" id="mfd" name="mfd" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="shelfLife">Shelf Life (Days)</label>
+                        <input type="number" id="shelfLife" name="shelfLife" min="0">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="ubd">Use By Date (UBD)</label>
+                        <input type="date" id="ubd" name="ubd" readonly style="background:#f1f5f9; cursor:not-allowed;">
+                    </div>
+                    
+                    <!-- File Upload Section -->
+                    <div class="form-group full-width">
+                        <label>Product Image</label>
+                        <div class="file-upload-wrapper" id="dropZone">
+                            <input type="file" id="imageFile" accept="image/*" onchange="previewImage(event)">
+                            <div>
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <p style="color: var(--text-muted); font-weight: 500;">Click to upload or drag and drop</p>
+                            </div>
+                        </div>
+                        <div class="preview-container" id="previewContainer">
+                            <img id="imagePreview" class="preview-image" src="" alt="Image Preview">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span id="btnText">Save Entry</span>
+                        <div class="loader" id="btnLoader"></div>
+                    </button>
+                </div>
+                <datalist id="codeList"></datalist>
+                <datalist id="productList"></datalist>
+            </form>
+            
+            <div id="statusMessage" class="status-message"></div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="close-modal" onclick="closePreviewModal()">×</button>
+            <div class="modal-header">
+                <h2>Record Details</h2>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div id="previewImageContainer" style="width: 100%; text-align: center; background: #f8fafc; padding: 1rem; border-radius: 8px;">
+                    <!-- Image will go here -->
+                </div>
+                
+                <div class="form-grid" style="width: 100%;" id="previewData">
+                    <!-- Data will go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==============================================================================
+        // IMPORTANT: REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
+        // ==============================================================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_gtLSUKMtb_B_FuCDmj7uDnINE92Ep4Rc42nC40Df8sRVYg5XW48JPdcdHNO4OzSp/exec"; 
+        
+        let fileBase64 = null;
+        let fileMimeType = null;
+        let fileName = null;
+        let masterData = [];
+        let allInventoryData = [];
+
+        // DOM Elements
+        const filterDateInput = document.getElementById('filterDate');
+        const mfdInput = document.getElementById('mfd');
+        const shelfLifeInput = document.getElementById('shelfLife');
+        const ubdInput = document.getElementById('ubd');
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            // Set default date for filter
+            const today = new Date().toISOString().split('T')[0];
+            filterDateInput.value = today;
+            
+            // Set default MFD
+            mfdInput.value = today;
+
+            // Load data
+            loadMasterData();
+            fetchInventory();
+        });
+
+        // Date Picker Filtering
+        filterDateInput.addEventListener('change', () => {
+            renderTable();
+        });
+
+        // UBD Calculation Logic
+        function calculateUBD() {
+            const mfdVal = mfdInput.value;
+            const shelfLifeDays = parseInt(shelfLifeInput.value, 10);
+
+            if (mfdVal && !isNaN(shelfLifeDays)) {
+                const mfdDate = new Date(mfdVal);
+                mfdDate.setDate(mfdDate.getDate() + shelfLifeDays);
+                ubdInput.value = mfdDate.toISOString().split('T')[0];
+            } else {
+                ubdInput.value = "";
+            }
+        }
+
+        mfdInput.addEventListener('change', calculateUBD);
+        shelfLifeInput.addEventListener('input', calculateUBD);
+
+        // Modal Logic
+        function openModal() {
+            document.getElementById('entryModal').classList.add('active');
+            // reset status if previously shown
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('entryModal').classList.remove('active');
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const entryModal = document.getElementById('entryModal');
+            const previewModal = document.getElementById('previewModal');
+            if (event.target == entryModal) {
+                closeModal();
+            }
+            if (event.target == previewModal) {
+                closePreviewModal();
+            }
+        }
+
+        function showPreviewModal(item) {
+            let fullImgSrc = item.Image;
+            if (fullImgSrc && fullImgSrc.includes('drive.google.com/uc')) {
+                const idMatch = fullImgSrc.match(/id=([^&]+)/);
+                if (idMatch) {
+                    fullImgSrc = `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w800`;
+                }
+            }
+
+            const imgContainer = document.getElementById('previewImageContainer');
+            if (fullImgSrc) {
+                imgContainer.innerHTML = `<img src="${fullImgSrc}" style="max-width: 100%; max-height: 250px; border-radius: 8px; object-fit: contain;">`;
+            } else {
+                imgContainer.innerHTML = `<div style="padding: 2rem; color: var(--text-muted);">No image available</div>`;
+            }
+
+            const dataContainer = document.getElementById('previewData');
+            dataContainer.innerHTML = `
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Category</label><div style="font-weight:600;font-size:0.95rem;">${item.Category || '-'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Item Code</label><div style="font-weight:600;font-size:0.95rem;">${item.Code || '-'}</div></div>
+                <div class="form-group full-width"><label style="font-size:0.8rem;color:var(--text-muted)">Product Name</label><div style="font-weight:700; color:var(--primary); font-size:1.1rem;">${item.Product || '-'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Variant</label><div style="font-weight:600;font-size:0.95rem;">${item.Variant || '-'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Price</label><div style="font-weight:600; color:var(--success); font-size:1.05rem;">${item.Price || '0'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Quantity</label><div style="font-weight:600;font-size:0.95rem;">${item.Quantity || '0'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Batch Number</label><div style="font-weight:600;font-size:0.95rem;">${item.Batch || '-'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">MFD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.MFD)}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">UBD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.UBD)}</div></div>
+            `;
+            
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        // Image Preview
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewContainer = document.getElementById('previewContainer');
+                    const imagePreview = document.getElementById('imagePreview');
+                    imagePreview.src = e.target.result;
+                    previewContainer.style.display = 'flex';
+                    document.getElementById('dropZone').style.borderColor = 'var(--success)';
+                    
+                    fileBase64 = e.target.result; 
+                    fileMimeType = file.type;
+                    fileName = file.name;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                resetImagePreview();
+            }
+        }
+
+        function resetImagePreview() {
+            document.getElementById('previewContainer').style.display = 'none';
+            fileBase64 = null;
+            fileMimeType = null;
+            fileName = null;
+            document.getElementById('dropZone').style.borderColor = 'var(--border)';
+        }
+
+        // Form Submission Logic
+        document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'block';
+            statusMessage.className = 'status-message';
+            
+            const formData = new FormData(this);
+            const dataPayload = {
+                category: formData.get('category'),
+                code: formData.get('code'),
+                product: formData.get('product'),
+                variant: formData.get('variant'),
+                price: formData.get('price'),
+                quantity: formData.get('quantity'),
+                mfd: formData.get('mfd'),
+                ubd: formData.get('ubd'),
+                batch: formData.get('batch'),
+                timestamp: new Date().toISOString(),
+                image: null
+            };
+
+            if (fileBase64) {
+                dataPayload.image = {
+                    base64: fileBase64,
+                    mimeType: fileMimeType,
+                    filename: fileName
+                };
+            }
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(dataPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    statusMessage.textContent = "Entry saved successfully!";
+                    statusMessage.classList.add('success');
+                    
+                    // Reset Form but keep default MFD
+                    this.reset();
+                    mfdInput.value = new Date().toISOString().split('T')[0];
+                    resetImagePreview();
+
+                    // Refresh inventory in background
+                    fetchInventory();
+                    
+                    // Auto close modal after short delay
+                    setTimeout(closeModal, 1500);
+                } else {
+                    throw new Error(result.message || "Unknown error occurred");
+                }
+            } catch (error) {
+                console.error("Submission Error:", error);
+                statusMessage.textContent = "Failed to save entry. Make sure SCRIPT_URL is correct.";
+                statusMessage.classList.add('error');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.style.display = 'block';
+                btnLoader.style.display = 'none';
+            }
+        });
+
+        // Fetch Inventory
+        async function fetchInventory() {
+            const loadingState = document.getElementById('loadingState');
+            const tableContainer = document.getElementById('tableContainer');
+            const noDataState = document.getElementById('noDataState');
+            
+            tableContainer.style.display = 'none';
+            noDataState.style.display = 'none';
+            loadingState.style.display = 'block';
+            
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    allInventoryData = result.data;
+                    renderTable();
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                loadingState.style.display = 'none';
+                noDataState.style.display = 'block';
+                noDataState.innerHTML = `
+                    <p style="color:var(--error)">Error loading data. Verify SCRIPT_URL.</p>
+                `;
+            }
+        }
+
+        // Render Table based on filter
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return '-';
+            return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
+        }
+
+        function renderTable() {
+            const tableContainer = document.getElementById('tableContainer');
+            const loadingState = document.getElementById('loadingState');
+            const noDataState = document.getElementById('noDataState');
+            const tbody = document.getElementById('inventoryBody');
+            
+            loadingState.style.display = 'none';
+            tbody.innerHTML = ''; 
+            
+            const filterDate = filterDateInput.value;
+            
+            // Filter logic: Check if MFD matches the selected filterDate
+            const filteredData = allInventoryData.filter(item => {
+                if (!item.MFD) return false;
+                try {
+                    const d = new Date(item.MFD);
+                    if (isNaN(d.getTime())) return false;
+                    const itemDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                    return itemDate === filterDate;
+                } catch(e) {
+                    return false;
+                }
+            });
+            
+            if (filteredData.length > 0) {
+                tableContainer.style.display = 'block';
+                noDataState.style.display = 'none';
+                
+                filteredData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'inventory-table-row';
+                    tr.onclick = () => showPreviewModal(item);
+                    
+                    let imgSrc = item.Image;
+                    if (imgSrc && imgSrc.includes('drive.google.com/uc')) {
+                        const idMatch = imgSrc.match(/id=([^&]+)/);
+                        if (idMatch) {
+                            imgSrc = `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w200`;
+                        }
+                    }
+                    
+                    const imgHtml = imgSrc ? `<img src="${imgSrc}" class="item-image" loading="lazy">` : `<div class="item-image" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:0.7rem;">No Img</div>`;
+                    
+                    tr.innerHTML = `
+                        <td>${imgHtml}</td>
+                        <td>
+                            <strong style="display:block;margin-bottom:4px;color:var(--primary);">${item.Product || '-'}</strong>
+                            <span style="color:var(--text-muted);font-size:0.8rem;">${item.Variant || 'No variant'}</span>
+                        </td>
+                        <td>
+                            <span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:0.75rem;margin-bottom:4px;display:inline-block;font-weight:600;">${item.Category || '-'}</span>
+                            <div style="font-family:monospace;font-size:0.85rem;color:var(--text-muted);">${item.Code || '-'}</div>
+                        </td>
+                        <td>
+                            <div>Qty: <strong>${item.Quantity || 0}</strong></div>
+                            <div style="color:var(--success);font-weight:600;">${item.Price || '0.00'}</div>
+                        </td>
+                        <td>
+                            <div style="font-size:0.85rem;margin-bottom:2px;"><strong>Batch:</strong> ${item.Batch || '-'}</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);">MFD: ${formatDate(item.MFD)}</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);">UBD: ${formatDate(item.UBD)}</div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tableContainer.style.display = 'none';
+                noDataState.style.display = 'block';
+            }
+        }
+
+        // Master Data Autofill Logic
+        async function loadMasterData() {
+            if (!SCRIPT_URL || SCRIPT_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") return;
+            try {
+                const response = await fetch(SCRIPT_URL + '?action=getMaster');
+                const result = await response.json();
+                if (result.status === 'success') {
+                    masterData = result.data;
+                    
+                    const codeList = document.getElementById('codeList');
+                    const productList = document.getElementById('productList');
+                    
+                    masterData.forEach(item => {
+                        if (item.Code) {
+                            const optionCode = document.createElement('option');
+                            optionCode.value = item.Code;
+                            codeList.appendChild(optionCode);
+                        }
+                        if (item.Product) {
+                            const optionProduct = document.createElement('option');
+                            optionProduct.value = item.Product;
+                            productList.appendChild(optionProduct);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to load master data:", error);
+            }
+        }
+        
+        function autoFillForm(match) {
+            if (!match) return;
+            if (match.Category) document.getElementById('category').value = match.Category;
+            if (match.Code) document.getElementById('code').value = match.Code;
+            if (match.Product) document.getElementById('product').value = match.Product;
+            if (match.Variant) document.getElementById('variant').value = match.Variant;
+            if (match.Price) document.getElementById('price').value = match.Price;
+        }
+
+        document.getElementById('code').addEventListener('change', function(e) {
+            const val = e.target.value.toString().trim().toLowerCase();
+            const match = masterData.find(item => item.Code && item.Code.toString().trim().toLowerCase() === val);
+            if (match) autoFillForm(match);
+        });
+
+        document.getElementById('product').addEventListener('change', function(e) {
+            const val = e.target.value.trim().toLowerCase();
+            const match = masterData.find(item => item.Product && item.Product.toLowerCase() === val);
+            if (match) autoFillForm(match);
+        });
+    </script>
+</body>
+</html>
