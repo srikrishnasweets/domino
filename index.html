@@ -482,10 +482,16 @@
         <div class="inventory-card">
             <div class="inventory-controls">
                 <h2 id="viewTitle" style="color: var(--text-main); font-size: 1.25rem;">Records</h2>
-                <button class="refresh-btn" onclick="fetchInventory()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                    Refresh
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <input type="text" id="searchInput" placeholder="Search product, code, batch..." style="padding: 0.5rem 0.5rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s; width: 100%; max-width: 250px;" onkeyup="renderTable()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
+                    <button class="refresh-btn" onclick="fetchInventory()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Refresh
+                    </button>
+                </div>
             </div>
             
             <div id="inventoryContainer">
@@ -904,18 +910,34 @@
             tbody.innerHTML = ''; 
             
             const filterDate = filterDateInput.value;
+            const searchInput = document.getElementById('searchInput');
+            const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
             
-            // Filter logic: Check if MFD matches the selected filterDate
+            // Filter logic: Check if MFD matches the selected filterDate and matches search query
             const filteredData = allInventoryData.filter(item => {
-                if (!item.MFD) return false;
-                try {
-                    const d = new Date(item.MFD);
-                    if (isNaN(d.getTime())) return false;
-                    const itemDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                    return itemDate === filterDate;
-                } catch(e) {
-                    return false;
+                // Check Date First
+                let matchesDate = false;
+                if (item.MFD) {
+                    try {
+                        const d = new Date(item.MFD);
+                        if (!isNaN(d.getTime())) {
+                            const itemDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                            matchesDate = (itemDate === filterDate);
+                        }
+                    } catch(e) { }
                 }
+                
+                if (!matchesDate) return false;
+                
+                // Check Search Query
+                if (searchVal) {
+                    const prodMatch = item.Product && item.Product.toString().toLowerCase().includes(searchVal);
+                    const codeMatch = item.Code && item.Code.toString().toLowerCase().includes(searchVal);
+                    const batchMatch = item.Batch && item.Batch.toString().toLowerCase().includes(searchVal);
+                    return prodMatch || codeMatch || batchMatch;
+                }
+                
+                return true;
             });
             
             if (filteredData.length > 0) {
