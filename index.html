@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <style>
         :root {
@@ -73,6 +74,7 @@
             font-weight: 600;
             color: var(--text-muted);
             font-size: 0.9rem;
+            align-content: center;
         }
 
         .date-picker {
@@ -464,6 +466,52 @@
                 display: none;
             }
         }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
     </style>
 </head>
 <body>
@@ -472,8 +520,16 @@
     <div class="navbar">
         <h1>Domino</h1>
         <div class="nav-controls">
-            <label for="filterDate">Records For:</label>
-            <input type="date" id="filterDate" class="date-picker">
+            <div style="display: flex; flex-direction: row; gap: 4px;">
+                <label for="filterCategory">Category:</label>
+                <select id="filterCategory" class="date-picker" style="min-width: 140px; padding: 0.4rem;">
+                    <option value="All">All Categories</option>
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: row; gap: 4px;">
+                <label for="filterDate">Records For:</label>
+                <input type="date" id="filterDate" class="date-picker" style="padding: 0.4rem;">
+            </div>
         </div>
     </div>
 
@@ -489,7 +545,6 @@
                     </div>
                     <button class="refresh-btn" onclick="fetchInventory()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                        Refresh
                     </button>
                 </div>
             </div>
@@ -579,9 +634,19 @@
                         <input type="number" id="usp" name="usp" readonly style="background:#f1f5f9; cursor:not-allowed;" step="0.01">
                     </div>
                     
-                    <div class="form-group full-width">
+                    <div class="form-group">
                         <label for="batch">Batch Number</label>
                         <input type="text" id="batch" name="batch">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Airport</label>
+                        <div style="display: flex; align-items: center; height: 100%;">
+                            <label class="switch">
+                                <input type="checkbox" id="airport" name="airport">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
 
 
@@ -660,9 +725,11 @@
         let fileName = null;
         let masterData = [];
         let allInventoryData = [];
+        let currentEditRowIndex = null;
 
         // DOM Elements
         const filterDateInput = document.getElementById('filterDate');
+        const filterCategorySelect = document.getElementById('filterCategory');
         const mfdInput = document.getElementById('mfd');
         const shelfLifeInput = document.getElementById('shelfLife');
         const ubdInput = document.getElementById('ubd');
@@ -687,6 +754,12 @@
             const today = new Date().toISOString().split('T')[0];
             filterDateInput.value = today;
             
+            // Restore category from localStorage
+            const savedCategory = localStorage.getItem('domino_filter_category');
+            if (savedCategory) {
+                filterCategorySelect.value = savedCategory;
+            }
+
             // Set default MFD
             mfdInput.value = today;
 
@@ -699,8 +772,13 @@
             fetchInventory();
         });
 
-        // Date Picker Filtering
+        // Filter Event Listeners
         filterDateInput.addEventListener('change', () => {
+            renderTable();
+        });
+
+        filterCategorySelect.addEventListener('change', () => {
+            localStorage.setItem('domino_filter_category', filterCategorySelect.value);
             renderTable();
         });
 
@@ -723,6 +801,13 @@
 
         // Modal Logic
         function openModal() {
+            document.getElementById('inventoryForm').reset();
+            document.getElementById('airport').checked = false;
+            mfdInput.value = new Date().toISOString().split('T')[0];
+            resetImagePreview();
+            currentEditRowIndex = null;
+            document.querySelector('#entryModal h2').textContent = 'Add New Entry';
+            document.getElementById('btnText').textContent = 'Save Entry';
             document.getElementById('entryModal').classList.add('active');
             // reset status if previously shown
             document.getElementById('statusMessage').style.display = 'none';
@@ -730,10 +815,82 @@
 
         function closeModal() {
             document.getElementById('entryModal').classList.remove('active');
+            currentEditRowIndex = null;
         }
 
         function closePreviewModal() {
             document.getElementById('previewModal').classList.remove('active');
+        }
+
+        function editRecord(itemStr) {
+            const item = JSON.parse(decodeURIComponent(itemStr));
+            closePreviewModal();
+            currentEditRowIndex = item.RowIndex;
+            
+            document.getElementById('category').value = item.Category || '';
+            document.getElementById('code').value = item.Code || '';
+            document.getElementById('product').value = item.Product || '';
+            document.getElementById('variant').value = item.Variant || '';
+            document.getElementById('mrp').value = item.MRP || '';
+            document.getElementById('weight').value = item.Weight || '';
+            document.getElementById('usp').value = item.USP || '';
+            document.getElementById('batch').value = item.Batch || '';
+            document.getElementById('airport').checked = item.Airport === true || item.Airport === 'TRUE';
+            
+            let mfdStr = '';
+            if (item.MFD) {
+              try { mfdStr = new Date(item.MFD).toISOString().split('T')[0]; } catch(e){}
+            }
+            if(mfdStr) mfdInput.value = mfdStr;
+            
+            let ubdStr = '';
+            if (item.UBD) {
+              try { ubdStr = new Date(item.UBD).toISOString().split('T')[0]; } catch(e){}
+            }
+            if(ubdStr) ubdInput.value = ubdStr;
+            
+            if (item.Image && item.Image.includes('drive.google.com')) {
+                const imgContainer = document.getElementById('previewContainer');
+                const imagePreview = document.getElementById('imagePreview');
+                imagePreview.src = item.Image;
+                imgContainer.style.display = 'flex';
+            } else {
+                resetImagePreview();
+            }
+            
+            document.querySelector('#entryModal h2').textContent = 'Edit Entry';
+            document.getElementById('btnText').textContent = 'Update Entry';
+            document.getElementById('entryModal').classList.add('active');
+        }
+
+        async function deleteRecord(rowIndex) {
+            if (!confirm('Are you sure you want to delete this record?')) return;
+            
+            closePreviewModal();
+            const loadingState = document.getElementById('loadingState');
+            const tableContainer = document.getElementById('tableContainer');
+            
+            tableContainer.style.display = 'none';
+            loadingState.style.display = 'block';
+            
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'delete', rowIndex: rowIndex })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    fetchInventory(); // refresh list
+                } else {
+                    alert("Failed to delete: " + result.message);
+                    fetchInventory();
+                }
+            } catch (error) {
+                console.error("Delete Error:", error);
+                alert("Failed to delete record.");
+                fetchInventory();
+            }
         }
 
         // Close modal when clicking outside
@@ -774,10 +931,25 @@
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Weight</label><div style="font-weight:600;font-size:0.95rem;">${item.Weight || '0'}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">USP</label><div style="font-weight:600;font-size:0.95rem;">${item.USP || '0'}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Batch Number</label><div style="font-weight:600;font-size:0.95rem;">${item.Batch || '-'}</div></div>
-                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Created Date</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.CreatedAt)}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Airport</label><div style="font-weight:600;font-size:0.95rem;">${(item.Airport === true || item.Airport === 'TRUE') ? 'Yes' : 'No'}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">MFD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.MFD)}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">UBD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.UBD)}</div></div>
             `;
+            
+            const existingActions = document.getElementById('previewActions');
+            if(existingActions) existingActions.remove();
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.id = 'previewActions';
+            actionsDiv.style.cssText = "display:flex; gap:10px; margin-top:15px;";
+            
+            // Encode item carefully to pass to onclick
+            const safeItemString = encodeURIComponent(JSON.stringify(item));
+            actionsDiv.innerHTML = `
+                <button onclick="editRecord('${safeItemString}')" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Edit</button>
+                <button onclick="deleteRecord(${item.RowIndex})" style="flex:1; padding:10px; background:var(--error); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Delete</button>
+            `;
+            dataContainer.appendChild(actionsDiv);
             
             document.getElementById('previewModal').classList.add('active');
         }
@@ -836,10 +1008,12 @@
                 usp: formData.get('usp'),
                 weight: formData.get('weight'),
                 createdAt: new Date().toISOString().split('T')[0],
-                mfd: formData.get('mfd'),
                 ubd: formData.get('ubd'),
                 batch: formData.get('batch'),
-                image: null
+                airport: document.getElementById('airport').checked,
+                image: null,
+                action: currentEditRowIndex ? 'edit' : 'add',
+                rowIndex: currentEditRowIndex
             };
 
             if (fileBase64) {
@@ -867,6 +1041,9 @@
                     this.reset();
                     mfdInput.value = new Date().toISOString().split('T')[0];
                     resetImagePreview();
+                    currentEditRowIndex = null;
+                    document.querySelector('#entryModal h2').textContent = 'Add New Entry';
+                    document.getElementById('btnText').textContent = 'Save Entry';
 
                     // Refresh inventory in background
                     fetchInventory();
@@ -903,6 +1080,7 @@
                 
                 if (result.status === 'success') {
                     allInventoryData = result.data;
+                    updateCategoryDropdown();
                     renderTable();
                 } else {
                     throw new Error(result.message);
@@ -914,6 +1092,27 @@
                 noDataState.innerHTML = `
                     <p style="color:var(--error)">Error loading data. Verify SCRIPT_URL.</p>
                 `;
+            }
+        }
+
+        function updateCategoryDropdown() {
+            const savedCategory = localStorage.getItem('domino_filter_category') || 'All';
+            const categories = [...new Set(allInventoryData.map(item => item.Category).filter(Boolean))].sort();
+            
+            filterCategorySelect.innerHTML = '<option value="All">All Categories</option>';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                filterCategorySelect.appendChild(option);
+            });
+            
+            // Restore selection from localStorage if it exists in the new list
+            if (savedCategory === 'All' || [...filterCategorySelect.options].some(opt => opt.value === savedCategory)) {
+                filterCategorySelect.value = savedCategory;
+            } else {
+                filterCategorySelect.value = 'All';
+                localStorage.setItem('domino_filter_category', 'All');
             }
         }
 
@@ -935,12 +1134,18 @@
             tbody.innerHTML = ''; 
             
             const filterDate = filterDateInput.value;
+            const filterCategory = filterCategorySelect.value;
             const searchInput = document.getElementById('searchInput');
             const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
             
-            // Filter logic: Check if Created Date matches the selected filterDate and matches search query
+            // Filter logic: Check if Created Date matches the selected filterDate, matches search query, and category
             const filteredData = allInventoryData.filter(item => {
-                // Check Date First
+                // Check Category First
+                if (filterCategory !== 'All' && item.Category !== filterCategory) {
+                    return false;
+                }
+
+                // Check Date Second
                 let matchesDate = false;
                 let dateToUse = item.CreatedAt || item.MFD;
                 if (dateToUse) {
@@ -988,7 +1193,10 @@
                     tr.innerHTML = `
                         <td>${imgHtml}</td>
                         <td>
-                            <strong style="display:block;margin-bottom:4px;color:var(--primary);">${item.Product || '-'}</strong>
+                            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                <strong style="color:var(--primary);">${item.Product || '-'}</strong>
+                                ${(item.Airport === true || item.Airport === 'TRUE') ? '<i class="bi bi-airplane-fill" title="Airport" style="color:var(--primary); font-size:1rem;"></i>' : ''}
+                            </div>
                             <span style="color:var(--text-muted);font-size:0.8rem;">${item.Variant || 'No variant'}</span>
                         </td>
                         <td>
@@ -1002,7 +1210,6 @@
                         </td>
                         <td>
                             <div style="font-size:0.85rem;margin-bottom:2px;"><strong>Batch:</strong> ${item.Batch || '-'}</div>
-                            <div style="font-size:0.8rem;color:var(--text-muted);">Created: ${formatDate(item.CreatedAt)}</div>
                             <div style="font-size:0.8rem;color:var(--text-muted);">MFD: ${formatDate(item.MFD)}</div>
                             <div style="font-size:0.8rem;color:var(--text-muted);">UBD: ${formatDate(item.UBD)}</div>
                         </td>
