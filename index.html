@@ -273,6 +273,40 @@
             display: flex;
             flex-direction: column;
             gap: 0.4rem;
+            position: relative;
+        }
+
+        .suggestion-box {
+            position: absolute;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            max-height: 200px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 1000;
+            display: none;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+        }
+
+        .suggestion-item {
+            padding: 0.65rem 0.85rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: #f8fafc;
+            color: var(--primary);
         }
 
         .form-group.full-width {
@@ -509,12 +543,14 @@
                     
                     <div class="form-group">
                         <label for="code">Item Code</label>
-                        <input type="text" id="code" name="code" required list="codeList">
+                        <input type="text" id="code" name="code" required autocomplete="off">
+                        <div id="codeSuggestions" class="suggestion-box"></div>
                     </div>
                     
                     <div class="form-group">
                         <label for="product">Product Name</label>
-                        <input type="text" id="product" name="product" required list="productList">
+                        <input type="text" id="product" name="product" required autocomplete="off">
+                        <div id="productSuggestions" class="suggestion-box"></div>
                     </div>
                     
                     <div class="form-group">
@@ -576,8 +612,7 @@
                         <div class="loader" id="btnLoader"></div>
                     </button>
                 </div>
-                <datalist id="codeList"></datalist>
-                <datalist id="productList"></datalist>
+
             </form>
             
             <div id="statusMessage" class="status-message"></div>
@@ -938,22 +973,6 @@
                 const result = await response.json();
                 if (result.status === 'success') {
                     masterData = result.data;
-                    
-                    const codeList = document.getElementById('codeList');
-                    const productList = document.getElementById('productList');
-                    
-                    masterData.forEach(item => {
-                        if (item.Code) {
-                            const optionCode = document.createElement('option');
-                            optionCode.value = item.Code;
-                            codeList.appendChild(optionCode);
-                        }
-                        if (item.Product) {
-                            const optionProduct = document.createElement('option');
-                            optionProduct.value = item.Product;
-                            productList.appendChild(optionProduct);
-                        }
-                    });
                 }
             } catch (error) {
                 console.error("Failed to load master data:", error);
@@ -969,17 +988,66 @@
             if (match.Price) document.getElementById('price').value = match.Price;
         }
 
-        document.getElementById('code').addEventListener('change', function(e) {
-            const val = e.target.value.toString().trim().toLowerCase();
-            const match = masterData.find(item => item.Code && item.Code.toString().trim().toLowerCase() === val);
-            if (match) autoFillForm(match);
-        });
+        function setupAutocomplete(inputId, dataField) {
+            const input = document.getElementById(inputId);
+            const suggestionBox = document.getElementById(inputId + 'Suggestions');
+            
+            input.addEventListener('input', function() {
+                const val = this.value.trim().toLowerCase();
+                suggestionBox.innerHTML = '';
+                
+                if (!val) {
+                    suggestionBox.style.display = 'none';
+                    return;
+                }
+                
+                const matches = [...new Set(masterData
+                    .filter(item => item[dataField] && item[dataField].toString().toLowerCase().includes(val))
+                    .map(item => item[dataField].toString()))];
+                    
+                if (matches.length > 0) {
+                    matches.forEach(matchVal => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.textContent = matchVal;
+                        div.addEventListener('click', function() {
+                            input.value = matchVal;
+                            suggestionBox.style.display = 'none';
+                            const match = masterData.find(item => item[dataField] && item[dataField].toString() === matchVal);
+                            if (match) autoFillForm(match);
+                        });
+                        suggestionBox.appendChild(div);
+                    });
+                    suggestionBox.style.display = 'block';
+                } else {
+                    suggestionBox.style.display = 'none';
+                }
+            });
+            
+            input.addEventListener('focus', function() {
+                if (this.value.trim() && suggestionBox.children.length > 0) {
+                    suggestionBox.style.display = 'block';
+                } else if (this.value.trim()) {
+                    const event = new Event('input');
+                    this.dispatchEvent(event);
+                }
+            });
 
-        document.getElementById('product').addEventListener('change', function(e) {
-            const val = e.target.value.trim().toLowerCase();
-            const match = masterData.find(item => item.Product && item.Product.toLowerCase() === val);
-            if (match) autoFillForm(match);
-        });
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && e.target !== suggestionBox) {
+                    suggestionBox.style.display = 'none';
+                }
+            });
+
+            input.addEventListener('change', function(e) {
+                const val = e.target.value.toString().trim().toLowerCase();
+                const match = masterData.find(item => item[dataField] && item[dataField].toString().trim().toLowerCase() === val);
+                if (match) autoFillForm(match);
+            });
+        }
+
+        setupAutocomplete('code', 'Code');
+        setupAutocomplete('product', 'Product');
     </script>
 </body>
 </html>
