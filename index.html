@@ -507,7 +507,7 @@
                                 <th>Image</th>
                                 <th>Product Details</th>
                                 <th>Category / Code</th>
-                                <th>Stock & Price</th>
+                                <th>Weight, MRP & USP</th>
                                 <th>Dates & Batch</th>
                             </tr>
                         </thead>
@@ -565,19 +565,26 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="price">Price</label>
-                        <input type="number" id="price" name="price" step="0.01" min="0" required>
+                        <label for="mrp">MRP</label>
+                        <input type="number" id="mrp" name="mrp" step="0.01" min="0" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="quantity">Quantity</label>
-                        <input type="number" id="quantity" name="quantity" min="0" required>
+                        <label for="weight">Weight</label>
+                        <input type="number" id="weight" name="weight" min="0" step="any" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usp">USP</label>
+                        <input type="number" id="usp" name="usp" readonly style="background:#f1f5f9; cursor:not-allowed;" step="0.01">
                     </div>
                     
                     <div class="form-group full-width">
                         <label for="batch">Batch Number</label>
                         <input type="text" id="batch" name="batch">
                     </div>
+
+
 
                     <div class="form-group">
                         <label for="mfd">Manufacturing Date (MFD)</label>
@@ -646,9 +653,6 @@
     </div>
 
     <script>
-        // ==============================================================================
-        // IMPORTANT: REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
-        // ==============================================================================
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_gtLSUKMtb_B_FuCDmj7uDnINE92Ep4Rc42nC40Df8sRVYg5XW48JPdcdHNO4OzSp/exec"; 
         
         let fileBase64 = null;
@@ -662,6 +666,20 @@
         const mfdInput = document.getElementById('mfd');
         const shelfLifeInput = document.getElementById('shelfLife');
         const ubdInput = document.getElementById('ubd');
+        const mrpInput = document.getElementById('mrp');
+        const weightInput = document.getElementById('weight');
+        const uspInput = document.getElementById('usp');
+
+        function calculateUSP() {
+            if (!mrpInput || !weightInput || !uspInput) return;
+            const mrp = parseFloat(mrpInput.value);
+            const weight = parseFloat(weightInput.value);
+            if (!isNaN(mrp) && !isNaN(weight) && weight > 0) {
+                uspInput.value = (mrp / weight).toFixed(2);
+            } else {
+                uspInput.value = '';
+            }
+        }
 
         // Initialization
         window.addEventListener('DOMContentLoaded', () => {
@@ -671,6 +689,10 @@
             
             // Set default MFD
             mfdInput.value = today;
+
+            // USP calculation listeners
+            if (mrpInput) mrpInput.addEventListener('input', calculateUSP);
+            if (weightInput) weightInput.addEventListener('input', calculateUSP);
 
             // Load data
             loadMasterData();
@@ -748,9 +770,11 @@
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Item Code</label><div style="font-weight:600;font-size:0.95rem;">${item.Code || '-'}</div></div>
                 <div class="form-group full-width"><label style="font-size:0.8rem;color:var(--text-muted)">Product Name</label><div style="font-weight:700; color:var(--primary); font-size:1.1rem;">${item.Product || '-'}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Variant</label><div style="font-weight:600;font-size:0.95rem;">${item.Variant || '-'}</div></div>
-                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Price</label><div style="font-weight:600; color:var(--success); font-size:1.05rem;">${item.Price || '0'}</div></div>
-                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Quantity</label><div style="font-weight:600;font-size:0.95rem;">${item.Quantity || '0'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">MRP</label><div style="font-weight:600; color:var(--success); font-size:1.05rem;">${item.MRP || '0'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Weight</label><div style="font-weight:600;font-size:0.95rem;">${item.Weight || '0'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">USP</label><div style="font-weight:600;font-size:0.95rem;">${item.USP || '0'}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Batch Number</label><div style="font-weight:600;font-size:0.95rem;">${item.Batch || '-'}</div></div>
+                <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">Created Date</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.CreatedAt)}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">MFD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.MFD)}</div></div>
                 <div class="form-group"><label style="font-size:0.8rem;color:var(--text-muted)">UBD</label><div style="font-weight:600;font-size:0.95rem;">${formatDate(item.UBD)}</div></div>
             `;
@@ -808,12 +832,13 @@
                 code: formData.get('code'),
                 product: formData.get('product'),
                 variant: formData.get('variant'),
-                price: formData.get('price'),
-                quantity: formData.get('quantity'),
+                mrp: formData.get('mrp'),
+                usp: formData.get('usp'),
+                weight: formData.get('weight'),
+                createdAt: new Date().toISOString().split('T')[0],
                 mfd: formData.get('mfd'),
                 ubd: formData.get('ubd'),
                 batch: formData.get('batch'),
-                timestamp: new Date().toISOString(),
                 image: null
             };
 
@@ -838,7 +863,7 @@
                     statusMessage.textContent = "Entry saved successfully!";
                     statusMessage.classList.add('success');
                     
-                    // Reset Form but keep default MFD
+                    // Reset Form but keep default dates
                     this.reset();
                     mfdInput.value = new Date().toISOString().split('T')[0];
                     resetImagePreview();
@@ -913,13 +938,14 @@
             const searchInput = document.getElementById('searchInput');
             const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
             
-            // Filter logic: Check if MFD matches the selected filterDate and matches search query
+            // Filter logic: Check if Created Date matches the selected filterDate and matches search query
             const filteredData = allInventoryData.filter(item => {
                 // Check Date First
                 let matchesDate = false;
-                if (item.MFD) {
+                let dateToUse = item.CreatedAt || item.MFD;
+                if (dateToUse) {
                     try {
-                        const d = new Date(item.MFD);
+                        const d = new Date(dateToUse);
                         if (!isNaN(d.getTime())) {
                             const itemDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
                             matchesDate = (itemDate === filterDate);
@@ -970,11 +996,13 @@
                             <div style="font-family:monospace;font-size:0.85rem;color:var(--text-muted);">${item.Code || '-'}</div>
                         </td>
                         <td>
-                            <div>Qty: <strong>${item.Quantity || 0}</strong></div>
-                            <div style="color:var(--success);font-weight:600;">${item.Price || '0.00'}</div>
+                            <div>Wt: <strong>${item.Weight || 0}</strong></div>
+                            <div style="color:var(--success);font-weight:600;">MRP: ${item.MRP || '0.00'}</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);">USP: ${item.USP || '-'}</div>
                         </td>
                         <td>
                             <div style="font-size:0.85rem;margin-bottom:2px;"><strong>Batch:</strong> ${item.Batch || '-'}</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);">Created: ${formatDate(item.CreatedAt)}</div>
                             <div style="font-size:0.8rem;color:var(--text-muted);">MFD: ${formatDate(item.MFD)}</div>
                             <div style="font-size:0.8rem;color:var(--text-muted);">UBD: ${formatDate(item.UBD)}</div>
                         </td>
@@ -1007,7 +1035,13 @@
             if (match.Code) document.getElementById('code').value = match.Code;
             if (match.Product) document.getElementById('product').value = match.Product;
             if (match.Variant) document.getElementById('variant').value = match.Variant;
-            if (match.Price) document.getElementById('price').value = match.Price;
+            if (match.MRP) {
+                const mrpField = document.getElementById('mrp');
+                if (mrpField) {
+                    mrpField.value = match.MRP;
+                    mrpField.dispatchEvent(new Event('input'));
+                }
+            }
         }
 
         function setupAutocomplete(inputId, dataField) {
