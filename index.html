@@ -670,7 +670,7 @@
                     <div class="form-group full-width">
                         <label>Product Image</label>
                         <div class="file-upload-wrapper" id="dropZone">
-                            <input type="file" id="imageFile" accept="image/*" onchange="previewImage(event)">
+                            <input type="file" id="imageFile" accept="image/*" capture="environment" onchange="previewImage(event)">
                             <div>
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -1008,6 +1008,7 @@
                 usp: formData.get('usp'),
                 weight: formData.get('weight'),
                 createdAt: new Date().toISOString().split('T')[0],
+                mfd: formData.get('mfd'),
                 ubd: formData.get('ubd'),
                 batch: formData.get('batch'),
                 airport: document.getElementById('airport').checked,
