@@ -669,16 +669,17 @@
                     <!-- File Upload Section -->
                     <div class="form-group full-width">
                         <label>Product Image</label>
-                        <div class="file-upload-wrapper" id="dropZone">
-                            <input type="file" id="imageFile" accept="image/*" capture="environment" onchange="previewImage(event)">
-                            <div>
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <p style="color: var(--text-muted); font-weight: 500;">Click to upload or drag and drop</p>
-                            </div>
+                        <div style="display: flex; gap: 12px; margin-top: 5px;">
+                            <label class="file-upload-wrapper" style="flex: 1; padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                                <input type="file" id="imageFileCamera" accept="image/*" capture="environment" onchange="previewImage(event)" style="display: none;">
+                                <i class="bi bi-camera" style="font-size: 1.5rem; color: var(--primary);"></i>
+                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Take Photo</span>
+                            </label>
+                            <label class="file-upload-wrapper" style="flex: 1; padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                                <input type="file" id="imageFileGallery" accept="image/*" onchange="previewImage(event)" style="display: none;">
+                                <i class="bi bi-images" style="font-size: 1.5rem; color: var(--primary);"></i>
+                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Gallery</span>
+                            </label>
                         </div>
                         <div class="preview-container" id="previewContainer">
                             <img id="imagePreview" class="preview-image" src="" alt="Image Preview">
@@ -964,7 +965,6 @@
                     const imagePreview = document.getElementById('imagePreview');
                     imagePreview.src = e.target.result;
                     previewContainer.style.display = 'flex';
-                    document.getElementById('dropZone').style.borderColor = 'var(--success)';
                     
                     fileBase64 = e.target.result; 
                     fileMimeType = file.type;
@@ -981,7 +981,12 @@
             fileBase64 = null;
             fileMimeType = null;
             fileName = null;
-            document.getElementById('dropZone').style.borderColor = 'var(--border)';
+            
+            // Clear input values so the same file can be re-selected if needed
+            const camInput = document.getElementById('imageFileCamera');
+            const galInput = document.getElementById('imageFileGallery');
+            if (camInput) camInput.value = '';
+            if (galInput) galInput.value = '';
         }
 
         // Form Submission Logic
